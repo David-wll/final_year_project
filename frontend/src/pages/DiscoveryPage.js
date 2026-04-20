@@ -24,6 +24,13 @@ const DiscoveryPage = () => {
   const [showCustomMatch, setShowCustomMatch] = useState(false);
   const [resumeFile, setResumeFile] = useState(null);
   const [manualSkills, setManualSkills] = useState('');
+
+  // Extra meticulous parameters
+  const [customCgpa, setCustomCgpa] = useState('');
+  const [customLevel, setCustomLevel] = useState('');
+  const [customSector, setCustomSector] = useState('');
+  const [customLocation, setCustomLocation] = useState('');
+
   const [matching, setMatching] = useState(false);
   const [extractedSkills, setExtractedSkills] = useState([]);
 
@@ -79,6 +86,10 @@ const DiscoveryPage = () => {
       const formData = new FormData();
       if (resumeFile) formData.append('resume', resumeFile);
       if (manualSkills) formData.append('manual_skills', manualSkills);
+      if (customCgpa) formData.append('cgpa', customCgpa);
+      if (customLevel) formData.append('level', customLevel);
+      if (customSector) formData.append('sector', customSector);
+      if (customLocation) formData.append('location', customLocation);
 
       const res = await api.post('recommendations/match-custom/', formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
@@ -173,13 +184,13 @@ const DiscoveryPage = () => {
           </Typography>
 
           <Grid container spacing={3} alignItems="flex-start">
-            <Grid item xs={12} md={5}>
+            <Grid item xs={12} md={6}>
               <Button
                 variant="outlined"
                 component="label"
                 fullWidth
                 startIcon={<UploadFile />}
-                sx={{ py: 1.5, borderStyle: 'dashed', borderWidth: 2 }}
+                sx={{ py: 1.5, borderStyle: 'dashed', borderWidth: 2, mb: 2 }}
               >
                 {resumeFile ? resumeFile.name : "Upload Resume (PDF)"}
                 <input
@@ -189,16 +200,53 @@ const DiscoveryPage = () => {
                   onChange={(e) => setResumeFile(e.target.files[0])}
                 />
               </Button>
-            </Grid>
-            <Grid item xs={12} md={7}>
               <TextField
                 fullWidth
-                placeholder="Or type skills (e.g. Python, React, Data Analysis)"
+                placeholder="Or type skills (e.g. Python, React)"
                 value={manualSkills}
                 onChange={(e) => setManualSkills(e.target.value)}
                 size="medium"
+                label="Technical Skills"
+                sx={{ mb: 2 }}
               />
             </Grid>
+            <Grid item xs={12} md={6}>
+              <Grid container spacing={2}>
+                <Grid item xs={6}>
+                  <TextField
+                    fullWidth label="CGPA (e.g. 4.5)"
+                    value={customCgpa}
+                    onChange={e => setCustomCgpa(e.target.value)}
+                    type="number" step="0.1"
+                  />
+                </Grid>
+                <Grid item xs={6}>
+                  <TextField
+                    fullWidth label="Level (e.g. 400)"
+                    value={customLevel}
+                    onChange={e => setCustomLevel(e.target.value)}
+                    type="number" step="100"
+                  />
+                </Grid>
+                <Grid item xs={6}>
+                  <TextField
+                    fullWidth label="Preferred Sector"
+                    placeholder="e.g. Technology"
+                    value={customSector}
+                    onChange={e => setCustomSector(e.target.value)}
+                  />
+                </Grid>
+                <Grid item xs={6}>
+                  <TextField
+                    fullWidth label="Preferred Location"
+                    placeholder="e.g. Lagos"
+                    value={customLocation}
+                    onChange={e => setCustomLocation(e.target.value)}
+                  />
+                </Grid>
+              </Grid>
+            </Grid>
+
             <Grid item xs={12} sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2, mt: 1 }}>
               <Button onClick={() => setShowCustomMatch(false)} color="inherit">
                 Cancel
@@ -206,10 +254,10 @@ const DiscoveryPage = () => {
               <Button
                 variant="contained"
                 onClick={handleCustomMatch}
-                disabled={(!resumeFile && !manualSkills.trim()) || matching}
+                disabled={(!resumeFile && !manualSkills.trim() && !customCgpa && !customSector) || matching}
                 startIcon={matching ? <CircularProgress size={16} color="inherit" /> : <AutoFixHigh />}
               >
-                {matching ? 'Calculating...' : 'Generate Matches'}
+                {matching ? 'Calculating Detailed Match...' : 'Generate Matches'}
               </Button>
             </Grid>
           </Grid>
@@ -291,8 +339,17 @@ const DiscoveryPage = () => {
 
                   <Box sx={{ mb: 3 }}>
                     <Typography variant="caption" sx={{ fontWeight: 700, color: 'text.secondary', textTransform: 'uppercase', fontSize: '0.65rem', display: 'block', mb: 1 }}>
-                      Matched Skills
+                      Why you matched
                     </Typography>
+
+                    {rec.explanations?.length > 0 && (
+                      <Box component="ul" sx={{ mt: 0, mb: 2, pl: 2, fontSize: '0.75rem', color: 'text.secondary' }}>
+                        {rec.explanations.map((exp, i) => (
+                          <li key={i}>{exp}</li>
+                        ))}
+                      </Box>
+                    )}
+
                     <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mb: 1.5 }}>
                       {rec.matched_skills?.slice(0, 3).map(skill => (
                         <Chip key={skill} label={skill} size="small" sx={{ height: 20, fontSize: '0.65rem', bgcolor: '#DCFCE7', color: '#166534', fontWeight: 600, border: 'none' }} />
@@ -305,7 +362,7 @@ const DiscoveryPage = () => {
                     {rec.missing_skills?.length > 0 && (
                       <>
                         <Typography variant="caption" sx={{ fontWeight: 700, color: 'text.secondary', textTransform: 'uppercase', fontSize: '0.65rem', display: 'block', mb: 1 }}>
-                          Growth Areas
+                          Growth Areas To Note
                         </Typography>
                         <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
                           {rec.missing_skills?.slice(0, 2).map(skill => (
