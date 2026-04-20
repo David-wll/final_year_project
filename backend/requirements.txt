@@ -1,0 +1,14 @@
+django
+djangorestframework
+djongo
+pymongo
+scikit-learn
+pandas
+numpy
+python-dotenv
+djangorestframework-simplejwt
+django-cors-headers
+PyPDF2
+requests
+beautifulsoup4
+lxml
