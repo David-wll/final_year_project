@@ -1,5 +1,5 @@
 import React from 'react';
-import { Box, Typography, Stack, Tooltip, Paper } from '@mui/material';
+import { Box, Typography, Stack, Paper } from '@mui/material';
 
 export const SimpleBarChart = ({ data, xKey, yKey, color = '#111827' }) => {
     if (!data || data.length === 0) return <Typography variant="body2" color="text.secondary">No data available</Typography>;

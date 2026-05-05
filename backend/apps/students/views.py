@@ -5,7 +5,7 @@ from .models import StudentProfile
 from .serializers import StudentProfileSerializer
 from accounts.permissions import IsStudent
 
-from rest_framework.parsers import MultiPartParser, FormParser
+from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 import json
 
 try:
@@ -19,7 +19,7 @@ except ImportError:
 class StudentProfileDetailView(generics.RetrieveUpdateAPIView):
     serializer_class = StudentProfileSerializer
     permission_classes = [permissions.IsAuthenticated, IsStudent]
-    parser_classes = (MultiPartParser, FormParser)
+    parser_classes = (MultiPartParser, FormParser, JSONParser)
 
     def get_object(self):
         profile, created = StudentProfile.objects.get_or_create(user=self.request.user)
@@ -146,15 +146,42 @@ class SkillTaxonomyView(APIView):
         ]
         locations = [
             "Lagos",
-            "Abuja",
-            "Rivers",
-            "Oyo",
+            "Abia",
+            "Adamawa",
+            "Akwa Ibom",
+            "Anambra",
+            "Bauchi",
+            "Bayelsa",
+            "Benue",
+            "Borno",
+            "Cross River",
+            "Delta",
+            "Ebonyi",
+            "Edo",
+            "Ekiti",
             "Enugu",
+            "Gombe",
+            "Imo",
+            "Jigawa",
+            "Abuja",
             "Kaduna",
             "Kano",
-            "Delta",
+            "Katsina",
+            "Kebbi",
+            "Kogi",
+            "Kwara",
+            "Nasarawa",
+            "Niger",
             "Ogun",
-            "Edo",
+            "Ondo",
+            "Osun",
+            "Oyo",
+            "Plateau",
+            "Rivers",
+            "Sokoto",
+            "Taraba",
+            "Yobe",
+            "Zamfara",
         ]
 
         return Response(

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Container, Typography, Box, Paper, TextField, Button, 
-  Alert, CircularProgress, List, ListItem, ListItemText, 
+  Alert, CircularProgress, 
   Divider, Accordion, AccordionSummary, AccordionDetails
 } from '@mui/material';
 import { ExpandMore, Send } from '@mui/icons-material';

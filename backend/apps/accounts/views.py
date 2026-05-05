@@ -4,6 +4,7 @@ from rest_framework.views import APIView
 from rest_framework_simplejwt.views import TokenObtainPairView
 from django.contrib.auth import get_user_model
 from .serializers import RegisterSerializer, LoginSerializer, UserSerializer
+from accounts.permissions import IsCoordinator
 
 User = get_user_model()
 
@@ -21,6 +22,14 @@ class MeView(generics.RetrieveAPIView):
 
     def get_object(self):
         return self.request.user
+
+
+class SupervisorListView(generics.ListAPIView):
+    permission_classes = (permissions.IsAuthenticated, IsCoordinator)
+    serializer_class = UserSerializer
+
+    def get_queryset(self):
+        return User.objects.filter(role__iexact='supervisor').order_by('email')
 
 class LogoutView(APIView):
     permission_classes = (permissions.IsAuthenticated,)

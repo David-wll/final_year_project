@@ -3,12 +3,17 @@ from organizations.models import InternshipOpportunity
 
 
 class InternshipOpportunitySerializer(serializers.ModelSerializer):
+    organization_name = serializers.ReadOnlyField(source='organization.company_name')
+    organization_verified = serializers.ReadOnlyField(source='organization.verified')
+
     class Meta:
         model = InternshipOpportunity
         fields = [
             "id",
             "title",
             "description",
+            "organization_name",
+            "organization_verified",
             "sector",
             "location_state",
             "location_lga",

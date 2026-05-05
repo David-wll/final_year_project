@@ -15,7 +15,6 @@ import SupervisorDashboard from './pages/SupervisorDashboard';
 import FeedbackPage from './pages/FeedbackPage';
 import Navbar from './components/Navbar';
 import ProtectedRoute from './components/ProtectedRoute';
-import { Container, Typography, Box } from '@mui/material';
 
 function App() {
   return (

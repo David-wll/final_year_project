@@ -5,8 +5,9 @@ import {
     Rating, Grid, Chip, OutlinedInput, Select, MenuItem, FormControl,
     Alert, CircularProgress, Divider, Stack
 } from '@mui/material';
-import { Star, Send, EmojiObjects, CheckCircle } from '@mui/icons-material';
+import { Send, EmojiObjects } from '@mui/icons-material';
 import api from '../services/api';
+import { useCallback } from 'react';
 
 const FeedbackPage = () => {
     const { applicationId } = useParams();
@@ -25,11 +26,7 @@ const FeedbackPage = () => {
         comments: ''
     });
 
-    useEffect(() => {
-        fetchData();
-    }, [applicationId]);
-
-    const fetchData = async () => {
+    const fetchData = useCallback(async () => {
         try {
             // We need to find the placement associated with this application
             const [appsRes, taxRes] = await Promise.all([
@@ -49,7 +46,11 @@ const FeedbackPage = () => {
         } finally {
             setLoading(false);
         }
-    };
+    }, [applicationId]);
+
+    useEffect(() => {
+        fetchData();
+    }, [fetchData]);
 
     const handleSubmit = async (e) => {
         e.preventDefault();

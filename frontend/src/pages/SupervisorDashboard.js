@@ -5,11 +5,12 @@ import {
   Dialog, DialogTitle, DialogContent, DialogActions, TextField, MenuItem,
   Rating, Avatar
 } from '@mui/material';
-import { RateReview, Visibility, Person, Business, CheckCircle } from '@mui/icons-material';
+import { RateReview, Visibility, Person, Business, CheckCircle, History } from '@mui/icons-material';
 import api from '../services/api';
 
 const SupervisorDashboard = () => {
   const [placements, setPlacements] = useState([]);
+  const [activities, setActivities] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -35,8 +36,12 @@ const SupervisorDashboard = () => {
 
   const fetchPlacements = async () => {
     try {
-      const response = await api.get('placements/supervisor/placements/');
-      setPlacements(response.data);
+      const [placementsRes, activityRes] = await Promise.all([
+        api.get('placements/supervisor/placements/'),
+        api.get('placements/activity/')
+      ]);
+      setPlacements(placementsRes.data);
+      setActivities(activityRes.data);
     } catch (err) {
       setError('Failed to load assigned students');
     } finally {
@@ -162,6 +167,24 @@ const SupervisorDashboard = () => {
             </TableBody>
           </Table>
         </TableContainer>
+      </Box>
+
+      <Box sx={{ mt: 6 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
+          <History color="primary" fontSize="small" />
+          <Typography variant="h6" fontWeight={600}>Recent Activity</Typography>
+        </Box>
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+          {activities.slice(0, 5).map((item) => (
+            <Paper key={item.id} variant="outlined" sx={{ p: 1.5, borderRadius: 2 }}>
+              <Typography variant="subtitle2" fontWeight={700}>{item.title}</Typography>
+              <Typography variant="body2" color="text.secondary">{item.message}</Typography>
+            </Paper>
+          ))}
+          {activities.length === 0 && (
+            <Typography variant="body2" color="text.secondary">No recent activity yet.</Typography>
+          )}
+        </Box>
       </Box>
 
       {/* Modern Evaluation Dialog */}

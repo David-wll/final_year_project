@@ -2,9 +2,9 @@ import React, { useState, useEffect } from 'react';
 import {
   Container, Typography, Box, Paper, Table, TableBody, TableCell,
   TableContainer, TableHead, TableRow, Button, Alert, CircularProgress,
-  Chip, Grid, Avatar, Divider, Tooltip
+  Chip, Grid, Avatar, Divider, Tooltip, TextField, MenuItem
 } from '@mui/material';
-import { WarningAmber, CheckCircle, Domain, Error as ErrorIcon, BarChart as ChartIcon, TrendingUp, AutoAwesome, CloudDownload } from '@mui/icons-material';
+import { WarningAmber, CheckCircle, Domain, Error as ErrorIcon, BarChart as ChartIcon, TrendingUp, AutoAwesome, CloudDownload, Person } from '@mui/icons-material';
 import api from '../services/api';
 import { SimpleBarChart, SimplePieChart } from '../components/AnalyticsCharts';
 
@@ -12,6 +12,9 @@ const CoordinatorDashboard = () => {
   const [pendingOrgs, setPendingOrgs] = useState([]);
   const [atRiskPlacements, setAtRiskPlacements] = useState([]);
   const [analytics, setAnalytics] = useState(null);
+  const [supervisors, setSupervisors] = useState([]);
+  const [placements, setPlacements] = useState([]);
+  const [assignments, setAssignments] = useState({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -29,9 +32,15 @@ const CoordinatorDashboard = () => {
         api.get('supervision/coordinator/at-risk/'),
         api.get('recommendations/analytics/')
       ]);
+      const [supervisorsRes, placementsRes] = await Promise.all([
+        api.get('auth/supervisors/'),
+        api.get('placements/coordinator/placements/')
+      ]);
       setPendingOrgs(orgsRes.data);
       setAtRiskPlacements(riskRes.data);
       setAnalytics(analyticsRes.data);
+      setSupervisors(supervisorsRes.data);
+      setPlacements(placementsRes.data);
     } catch (err) {
       setError('Failed to load dashboard data');
     } finally {
@@ -46,6 +55,23 @@ const CoordinatorDashboard = () => {
       fetchDashboardData();
     } catch (err) {
       setError(`Failed to ${action} organization`);
+    }
+  };
+
+  const handleAssignSupervisor = async (placementId) => {
+    const supervisorId = assignments[placementId];
+    if (!supervisorId) {
+      setError('Select a supervisor first');
+      return;
+    }
+    try {
+      await api.patch(`placements/placements/${placementId}/assign-supervisor/`, {
+        supervisor_id: supervisorId,
+      });
+      setSuccess('Supervisor assigned successfully!');
+      fetchDashboardData();
+    } catch (err) {
+      setError('Failed to assign supervisor');
     }
   };
 
@@ -87,6 +113,65 @@ const CoordinatorDashboard = () => {
       <Paper sx={{ p: 3, mb: 6, borderRadius: 3, bgcolor: 'rgba(17, 24, 39, 0.02)', border: '1px dashed rgba(17, 24, 39, 0.1)' }}>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
           <Box>
+
+          {/* Supervisor Assignment */}
+          <Box sx={{ mt: 8, mb: 8 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', mb: 3, gap: 1 }}>
+              <Person color="primary" />
+              <Typography variant="h6" fontWeight={600}>Assign Supervisors</Typography>
+            </Box>
+            <TableContainer component={Paper} sx={{ borderRadius: 3, overflow: 'hidden' }}>
+              <Table>
+                <TableHead sx={{ backgroundColor: 'rgba(17, 24, 39, 0.02)' }}>
+                  <TableRow>
+                    <TableCell sx={{ fontWeight: 600 }}>Student</TableCell>
+                    <TableCell sx={{ fontWeight: 600 }}>Opportunity</TableCell>
+                    <TableCell sx={{ fontWeight: 600 }}>Current Supervisor</TableCell>
+                    <TableCell sx={{ fontWeight: 600 }}>Assign / Reassign</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {placements.map((p) => (
+                    <TableRow key={p.id} hover>
+                      <TableCell>{p.application_details?.student_details?.full_name || 'Student'}</TableCell>
+                      <TableCell>{p.application_details?.opportunity_details?.title || 'Placement'}</TableCell>
+                      <TableCell>
+                        {p.supervisor_assigned_details?.email || 'Not assigned'}
+                      </TableCell>
+                      <TableCell>
+                        <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+                          <TextField
+                            select
+                            size="small"
+                            value={assignments[p.id] || ''}
+                            onChange={(e) => setAssignments(prev => ({ ...prev, [p.id]: e.target.value }))}
+                            sx={{ minWidth: 240 }}
+                            placeholder="Choose supervisor"
+                          >
+                            {supervisors.map((sup) => (
+                              <MenuItem key={sup.id} value={sup.id}>
+                                {sup.email}
+                              </MenuItem>
+                            ))}
+                          </TextField>
+                          <Button variant="outlined" onClick={() => handleAssignSupervisor(p.id)}>
+                            Assign
+                          </Button>
+                        </Box>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                  {placements.length === 0 && (
+                    <TableRow>
+                      <TableCell colSpan={4} align="center" sx={{ py: 6 }}>
+                        <Typography color="text.secondary">No placements available for assignment.</Typography>
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          </Box>
             <Typography variant="subtitle1" fontWeight={700}>System Maintenance</Typography>
             <Typography variant="body2" color="text.secondary">Update the ML recommendation engine with recent placement data.</Typography>
           </Box>

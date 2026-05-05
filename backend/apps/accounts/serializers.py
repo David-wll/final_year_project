@@ -18,10 +18,15 @@ class RegisterSerializer(serializers.ModelSerializer):
         fields = ('email', 'password', 'role')
 
     def create(self, validated_data):
+        # Normalize role to lowercase to ensure permission checks match stored values
+        role = validated_data.get('role')
+        if isinstance(role, str):
+            role = role.lower()
+
         user = User.objects.create_user(
             email=validated_data['email'],
             password=validated_data['password'],
-            role=validated_data['role']
+            role=role
         )
         return user
 

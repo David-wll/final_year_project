@@ -18,6 +18,7 @@ const StudentProfilePage = () => {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [applications, setApplications] = useState([]);
+  const [activities, setActivities] = useState([]);
   const [resumeFile, setResumeFile] = useState(null);
   const [taxonomy, setTaxonomy] = useState({
     technical_skills: [],
@@ -48,10 +49,11 @@ const StudentProfilePage = () => {
 
   const fetchInitialData = async () => {
     try {
-      const [profileRes, taxonomyRes, appsRes] = await Promise.all([
+      const [profileRes, taxonomyRes, appsRes, activityRes] = await Promise.all([
         api.get('students/profile/'),
         api.get('students/taxonomy/'),
-        api.get('placements/student/applications/')
+        api.get('placements/student/applications/'),
+        api.get('placements/activity/')
       ]);
 
       if (profileRes.data) {
@@ -59,6 +61,7 @@ const StudentProfilePage = () => {
       }
       setTaxonomy(taxonomyRes.data);
       setApplications(appsRes.data);
+      setActivities(activityRes.data);
     } catch (err) {
       setError('Failed to load profile data');
     } finally {
@@ -375,6 +378,24 @@ const StudentProfilePage = () => {
                   View ML Matches
                 </Button>
               )}
+            </Paper>
+
+            <Paper sx={{ p: 3, borderRadius: 3, mb: 4 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', mb: 2, gap: 1 }}>
+                <History fontSize="small" color="primary" />
+                <Typography variant="h6" sx={{ fontWeight: 600 }}>Recent Activity</Typography>
+              </Box>
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+                {activities.slice(0, 5).map((item) => (
+                  <Paper key={item.id} variant="outlined" sx={{ p: 1.5, borderRadius: 2 }}>
+                    <Typography variant="subtitle2" fontWeight={700}>{item.title}</Typography>
+                    <Typography variant="body2" color="text.secondary">{item.message}</Typography>
+                  </Paper>
+                ))}
+                {activities.length === 0 && (
+                  <Typography variant="body2" color="text.secondary">No recent activity yet.</Typography>
+                )}
+              </Box>
             </Paper>
 
             <Box sx={{ display: 'flex', alignItems: 'center', mb: 2, gap: 1 }}>

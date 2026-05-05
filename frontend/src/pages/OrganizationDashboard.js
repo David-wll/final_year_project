@@ -1,17 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import {
   Container, Typography, Box, Paper, Grid, TextField, Button,
-  Alert, CircularProgress, Divider, List,
-  ListItem, ListItemText, ListItemSecondaryAction, IconButton,
-  Dialog, DialogTitle, DialogContent, DialogActions, MenuItem, Chip
+  Alert, CircularProgress, Divider, IconButton,
+  Dialog, DialogTitle, DialogContent, DialogActions, MenuItem, Chip,
+  Autocomplete
 } from '@mui/material';
-import { Delete, Edit, Add, People, Business, LocationOn, Phone, Email, Verified } from '@mui/icons-material';
+import { Delete, Edit, Add, People, LocationOn, Verified, History } from '@mui/icons-material';
 import api from '../services/api';
 
 const OrganizationDashboard = () => {
   const [profile, setProfile] = useState(null);
   const [opportunities, setOpportunities] = useState([]);
   const [applications, setApplications] = useState([]);
+  const [activities, setActivities] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -42,16 +43,18 @@ const OrganizationDashboard = () => {
 
   const fetchData = async () => {
     try {
-      const [profileRes, oppsRes, appsRes, taxRes] = await Promise.all([
+      const [profileRes, oppsRes, appsRes, taxRes, activityRes] = await Promise.all([
         api.get('organizations/profile/'),
         api.get('organizations/opportunities/'),
         api.get('placements/organization/applications/'),
-        api.get('students/taxonomy/')
+        api.get('students/taxonomy/'),
+        api.get('placements/activity/')
       ]);
       setProfile(profileRes.data);
       setOpportunities(oppsRes.data);
       setApplications(appsRes.data);
       setTaxonomy(taxRes.data);
+      setActivities(activityRes.data);
     } catch (err) {
       setError('Failed to load dashboard data');
     } finally {
@@ -219,6 +222,24 @@ const OrganizationDashboard = () => {
               </Button>
             </Box>
           </Paper>
+
+          <Paper sx={{ p: 3, borderRadius: 3, mt: 4 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', mb: 2, gap: 1 }}>
+              <History fontSize="small" color="primary" />
+              <Typography variant="h6" fontWeight={600}>Recent Activity</Typography>
+            </Box>
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+              {activities.slice(0, 5).map((item) => (
+                <Paper key={item.id} variant="outlined" sx={{ p: 1.5, borderRadius: 2 }}>
+                  <Typography variant="subtitle2" fontWeight={700}>{item.title}</Typography>
+                  <Typography variant="body2" color="text.secondary">{item.message}</Typography>
+                </Paper>
+              ))}
+              {activities.length === 0 && (
+                <Typography variant="body2" color="text.secondary">No recent activity yet.</Typography>
+              )}
+            </Box>
+          </Paper>
         </Grid>
       </Grid>
 
@@ -295,9 +316,59 @@ const OrganizationDashboard = () => {
               </Grid>
               <Grid item xs={6}>
                 <Typography variant="body2" fontWeight={500} sx={{ mb: 1 }}>State</Typography>
-                <TextField fullWidth select name="location_state" value={oppFormData.location_state} onChange={handleOppChange}>
-                  {taxonomy.locations.map(l => <MenuItem key={l} value={l}>{l}</MenuItem>)}
-                </TextField>
+                <Autocomplete
+                  freeSolo
+                  options={taxonomy.locations}
+                  value={oppFormData.location_state}
+                  onChange={(_, newValue) => setOppFormData({ ...oppFormData, location_state: newValue || '' })}
+                  onInputChange={(_, newValue) => setOppFormData({ ...oppFormData, location_state: newValue })}
+                  renderInput={(params) => (
+                    <TextField
+                      {...params}
+                      fullWidth
+                      placeholder="Lagos, Abuja, Kano..."
+                    />
+                  )}
+                />
+              </Grid>
+              <Grid item xs={6}>
+                <Typography variant="body2" fontWeight={500} sx={{ mb: 1 }}>LGA / City</Typography>
+                <TextField
+                  fullWidth
+                  name="location_lga"
+                  value={oppFormData.location_lga}
+                  onChange={handleOppChange}
+                  placeholder="Ikeja, Wuse, Garki..."
+                />
+              </Grid>
+              <Grid item xs={6}>
+                <Typography variant="body2" fontWeight={500} sx={{ mb: 1 }}>Start date</Typography>
+                <TextField fullWidth type="date" name="start_date" value={oppFormData.start_date} onChange={handleOppChange} InputLabelProps={{ shrink: true }} />
+              </Grid>
+              <Grid item xs={6}>
+                <Typography variant="body2" fontWeight={500} sx={{ mb: 1 }}>Deadline</Typography>
+                <TextField fullWidth type="date" name="application_deadline" value={oppFormData.application_deadline} onChange={handleOppChange} InputLabelProps={{ shrink: true }} />
+              </Grid>
+              <Grid item xs={6}>
+                <Typography variant="body2" fontWeight={500} sx={{ mb: 1 }}>Duration (weeks)</Typography>
+                <TextField fullWidth type="number" name="duration_weeks" value={oppFormData.duration_weeks} onChange={handleOppChange} />
+              </Grid>
+              <Grid item xs={6}>
+                <Typography variant="body2" fontWeight={500} sx={{ mb: 1 }}>Slots available</Typography>
+                <TextField fullWidth type="number" name="slots_available" value={oppFormData.slots_available} onChange={handleOppChange} />
+              </Grid>
+              <Grid item xs={6}>
+                <Typography variant="body2" fontWeight={500} sx={{ mb: 1 }}>Stipend</Typography>
+                <TextField fullWidth type="number" name="stipend_amount" value={oppFormData.stipend_amount} onChange={handleOppChange} disabled={!oppFormData.stipend_available} />
+              </Grid>
+              <Grid item xs={6} sx={{ display: 'flex', alignItems: 'end' }}>
+                <Button
+                  variant={oppFormData.stipend_available ? 'contained' : 'outlined'}
+                  onClick={() => setOppFormData({ ...oppFormData, stipend_available: !oppFormData.stipend_available })}
+                  fullWidth
+                >
+                  {oppFormData.stipend_available ? 'Stipend Included' : 'No Stipend'}
+                </Button>
               </Grid>
             </Grid>
           </Box>

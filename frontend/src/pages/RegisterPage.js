@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { Container, TextField, Button, Typography, Box, Alert, MenuItem, Grid } from '@mui/material';
+import { Container, TextField, Button, Typography, Box, Alert, Grid } from '@mui/material';
 
 const RegisterPage = () => {
   const [email, setEmail] = useState('');
