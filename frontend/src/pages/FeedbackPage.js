@@ -35,9 +35,12 @@ const FeedbackPage = () => {
             ]);
 
             const app = appsRes.data.find(a => a.id === parseInt(applicationId));
-            if (!app || !app.placement) {
-                setError('Placement not found');
-            } else {
+            if (!app) {
+                setError('Application not found. Please return to your profile.');
+            } else if (!app.placement) {
+                setError('No active placement found for this application. Feedback can only be submitted after a placement has been confirmed.');
+            }
+             else {
                 setApplication(app);
             }
             setTaxonomy(taxRes.data);

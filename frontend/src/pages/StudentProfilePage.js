@@ -57,7 +57,19 @@ const StudentProfilePage = () => {
       ]);
 
       if (profileRes.data) {
-        setFormData(prev => ({ ...prev, ...profileRes.data }));
+        const raw = profileRes.data;
+        // Normalise skill arrays: API returns [{name, proficiency}] — flatten to strings
+        const normalise = (arr) =>
+          (arr || []).map(s => (typeof s === 'object' ? s.name : s));
+
+        setFormData(prev => ({
+          ...prev,
+          ...raw,
+          technical_skills: normalise(raw.technical_skills),
+          soft_skills: normalise(raw.soft_skills),
+          preferred_sectors: Array.isArray(raw.preferred_sectors) ? raw.preferred_sectors : [],
+          preferred_locations: Array.isArray(raw.preferred_locations) ? raw.preferred_locations : [],
+        }));
       }
       setTaxonomy(taxonomyRes.data);
       setApplications(appsRes.data);
@@ -107,19 +119,35 @@ const StudentProfilePage = () => {
   const handleBack = () => setActiveStep((prev) => prev - 1);
 
   const handleSubmit = async () => {
-    setSaving(true);
-    setError('');
-    setSuccess('');
-    try {
-      await api.patch('students/profile/', formData); // Using PATCH for partial updates
-      setSuccess('Profile updated successfully! Check your updated matches in Discovery.');
-      fetchInitialData();
-    } catch (err) {
-      setError('Failed to update profile');
-    } finally {
-      setSaving(false);
-    }
-  };
+  setSaving(true);
+  setError('');
+  setSuccess('');
+  try {
+    
+    const payload = {
+      ...formData,
+      // Re-wrap plain strings back to {name, proficiency} objects for the backend
+      technical_skills: (formData.technical_skills || []).map(s =>
+        typeof s === 'string' ? { name: s, proficiency: 'intermediate' } : s
+      ),
+      soft_skills: (formData.soft_skills || []).map(s =>
+        typeof s === 'string' ? { name: s, proficiency: 'intermediate' } : s
+      ),
+      // Send null instead of empty string for URLField
+      cgpa: parseFloat(formData.cgpa) || 0.0,
+      level: parseInt(formData.level) || 100,
+      portfolio_url: formData.portfolio_url || null,
+    };
+    await api.patch('students/profile/', payload);
+    setSuccess('Profile updated successfully!');
+    fetchInitialData();
+  } catch (err) {
+    setError('Failed to update profile. Please check all fields and try again.');
+    console.error(err.response?.data); // shows exact validation errors in browser console
+  } finally {
+    setSaving(false);
+  }
+};
 
   if (loading) return (
     <Box sx={{ display: 'flex', justifyContent: 'center', mt: 10 }}>

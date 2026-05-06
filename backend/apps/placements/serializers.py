@@ -57,7 +57,7 @@ class InternshipFeedbackSerializer(serializers.ModelSerializer):
     class Meta:
         model = InternshipFeedback
         fields = '__all__'
-        read_only_fields = ('submitted_at',)
+        read_only_fields = ('submitted_at', 'submitted_by_role')
 
 
 class PlacementActivitySerializer(serializers.ModelSerializer):

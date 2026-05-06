@@ -2,6 +2,8 @@ from rest_framework import serializers
 from .models import StudentProfile
 
 class StudentProfileSerializer(serializers.ModelSerializer):
+    portfolio_url = serializers.URLField(required=False, allow_blank=True, allow_null=True)
+
     class Meta:
         model = StudentProfile
         fields = '__all__'
