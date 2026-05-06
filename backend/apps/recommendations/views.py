@@ -97,21 +97,17 @@ class RecommendationView(views.APIView):
                     (ml_score * 0.6 + skill_match_ratio * 0.3 + sector_match * 0.1) * 100
                 )
 
-                recommendations.append(
-                    {
-                        "opportunity": InternshipOpportunitySerializer(opp).data,
-                        "match_score": match_score,
-                        "ml_confidence": round(ml_score * 100, 1),
-                        "breakdown": {
-                            "ml_model_weight": round(ml_score * 60, 1),
-                            "skill_match_weight": round(skill_match_ratio * 30, 1),
-                            "preference_weight": round(sector_match * 10, 1),
-                        },
-                        "explanations": explanations,
-                        "matched_skills": list(matched_skills),
-                        "missing_skills": list(missing_skills),
+                recommendations.append({
+                    "opportunity": InternshipOpportunitySerializer(opp).data,
+                    "match_score": match_score,
+                    "matched_skills": list(matched_skills),
+                    "missing_skills": list(missing_skills),
+                    "breakdown": {
+                        "ml_model_weight": round(ml_score * 60, 1),
+                        "skill_match_weight": round(skill_match_ratio * 30, 1),
+                        "preference_weight": round(sector_match * 10, 1),
                     }
-                )
+                })
         except Exception as e:
             print(f"Error in recommendation loop: {e}")
 

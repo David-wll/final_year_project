@@ -1,8 +1,14 @@
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
+from .models import Notification
 
 User = get_user_model()
+
+class NotificationSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Notification
+        fields = '__all__'
 
 class UserSerializer(serializers.ModelSerializer):
     class Meta:

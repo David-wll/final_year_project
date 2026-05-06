@@ -3,7 +3,7 @@ import {
   Container, Typography, Box, Paper, Table, TableBody, TableCell,
   TableContainer, TableHead, TableRow, Button, Alert, CircularProgress,
   Dialog, DialogTitle, DialogContent, DialogActions, TextField, MenuItem,
-  Rating, Avatar
+  Rating, Avatar, Grid, Chip, Divider
 } from '@mui/material';
 import { RateReview, Visibility, Person, Business, CheckCircle, History } from '@mui/icons-material';
 import api from '../services/api';
@@ -61,6 +61,17 @@ const SupervisorDashboard = () => {
       setOpenReports(true);
     } catch (err) {
       setError('Failed to load student reports');
+    }
+  };
+
+  const handleReportAction = async (reportId, status, comment) => {
+    try {
+      await api.patch(`supervision/reports/${reportId}/action/`, { status, supervisor_comment: comment });
+      setSuccess(`Report ${status} successfully!`);
+      // Update local state
+      setStudentReports(prev => prev.map(r => r.id === reportId ? { ...r, status, supervisor_comment: comment } : r));
+    } catch (err) {
+      setError('Failed to update report status');
     }
   };
 
@@ -244,7 +255,7 @@ const SupervisorDashboard = () => {
         </DialogActions>
       </Dialog>
 
-      {/* Reports View Dialog */}
+      {/* Enhanced Reports View Dialog */}
       <Dialog
         open={openReports}
         onClose={() => setOpenReports(false)}
@@ -252,55 +263,96 @@ const SupervisorDashboard = () => {
         fullWidth
         PaperProps={{ sx: { borderRadius: 4 } }}
       >
-        <DialogTitle sx={{ fontWeight: 700 }}>Weekly Progress Reports</DialogTitle>
-        <DialogContent dividers sx={{ backgroundColor: 'rgba(17, 24, 39, 0.01)' }}>
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, py: 1 }}>
+        <DialogTitle sx={{ fontWeight: 800 }}>Student Logbook History</DialogTitle>
+        <DialogContent dividers sx={{ backgroundColor: 'rgba(17, 24, 39, 0.01)', minHeight: 400 }}>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3, py: 2 }}>
             {studentReports.map((report) => (
-              <Paper key={report.id} sx={{ p: 3, borderRadius: 3 }}>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                  <Typography variant="h6" fontWeight={700}>Week {report.week_number}</Typography>
-                  <Typography variant="caption" color="text.secondary">
-                    Submitted on {new Date(report.submitted_at).toLocaleDateString()}
-                  </Typography>
-                </Box>
-                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+              <Paper key={report.id} sx={{ p: 4, borderRadius: 3, border: '1px solid rgba(0,0,0,0.05)' }}>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 3 }}>
                   <Box>
-                    <Typography variant="caption" color="primary" fontWeight={700} sx={{ textTransform: 'uppercase' }}>Tasks Completed</Typography>
-                    <Typography variant="body2" sx={{ mt: 0.5 }}>{report.tasks_completed}</Typography>
-                  </Box>
-                  <Box>
-                    <Typography variant="caption" color="primary" fontWeight={700} sx={{ textTransform: 'uppercase' }}>Challenges</Typography>
-                    <Typography variant="body2" sx={{ mt: 0.5 }}>{report.challenges}</Typography>
-                  </Box>
-                  {!report.supervisor_seen && (
-                    <Button
-                      size="small"
-                      variant="text"
-                      onClick={async () => {
-                        await api.patch(`supervision/reports/${report.id}/seen/`);
-                        setStudentReports(prev => prev.map(r => r.id === report.id ? { ...r, supervisor_seen: true } : r));
-                      }}
-                    >
-                      Mark as Seen
-                    </Button>
-                  )}
-                  {report.supervisor_seen && (
-                    <Typography variant="caption" color="success.main" sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                      <CheckCircle sx={{ fontSize: 14 }} /> Viewed
+                    <Typography variant="h6" fontWeight={800}>Week {report.week_number}</Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      Submitted on {new Date(report.submitted_at).toLocaleString()}
                     </Typography>
-                  )}
+                  </Box>
+                  <Box sx={{ textAlign: 'right' }}>
+                    <Chip 
+                      label={report.status.replace('_', ' ').toUpperCase()} 
+                      color={report.status === 'approved' ? 'success' : report.status === 'revision_requested' ? 'warning' : 'info'}
+                      size="small"
+                      sx={{ fontWeight: 700, borderRadius: 1.5 }}
+                    />
+                  </Box>
                 </Box>
+
+                <Grid container spacing={3}>
+                  <Grid item xs={12} md={7}>
+                    <Typography variant="subtitle2" fontWeight={700} color="primary" gutterBottom>Daily Logs</Typography>
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                      {report.daily_logs?.map((log) => (
+                        <Box key={log.day} sx={{ p: 1.5, bgcolor: 'rgba(0,0,0,0.02)', borderRadius: 2 }}>
+                          <Typography variant="caption" fontWeight={800} color="text.secondary">{log.day}</Typography>
+                          <Typography variant="body2">{log.activity}</Typography>
+                        </Box>
+                      ))}
+                    </Box>
+                  </Grid>
+                  <Grid item xs={12} md={5}>
+                    <Box sx={{ mb: 2.5 }}>
+                      <Typography variant="subtitle2" fontWeight={700} color="primary" gutterBottom>Weekly Summary</Typography>
+                      <Typography variant="body2">{report.weekly_summary}</Typography>
+                    </Box>
+                    <Box sx={{ mb: 2.5 }}>
+                      <Typography variant="subtitle2" fontWeight={700} color="primary" gutterBottom>Skills Developed</Typography>
+                      <Typography variant="body2">{report.skills_developed}</Typography>
+                    </Box>
+                    
+                    <Divider sx={{ my: 2 }} />
+                    
+                    {report.status === 'pending' ? (
+                      <Box>
+                        <TextField
+                          fullWidth size="small" multiline rows={2}
+                          placeholder="Add a comment or feedback..."
+                          id={`comment-${report.id}`}
+                          sx={{ mb: 2 }}
+                        />
+                        <Box sx={{ display: 'flex', gap: 1 }}>
+                          <Button 
+                            fullWidth variant="contained" color="success" size="small"
+                            onClick={() => handleReportAction(report.id, 'approved', document.getElementById(`comment-${report.id}`).value)}
+                          >
+                            Approve
+                          </Button>
+                          <Button 
+                            fullWidth variant="outlined" color="warning" size="small"
+                            onClick={() => handleReportAction(report.id, 'revision_requested', document.getElementById(`comment-${report.id}`).value)}
+                          >
+                            Request Revision
+                          </Button>
+                        </Box>
+                      </Box>
+                    ) : (
+                      <Box sx={{ p: 2, bgcolor: 'rgba(0,0,0,0.03)', borderRadius: 2 }}>
+                        <Typography variant="caption" fontWeight={800} color="text.secondary">Supervisor Feedback</Typography>
+                        <Typography variant="body2" sx={{ fontStyle: 'italic', mt: 0.5 }}>
+                          {report.supervisor_comment || 'No comment provided.'}
+                        </Typography>
+                      </Box>
+                    )}
+                  </Grid>
+                </Grid>
               </Paper>
             ))}
             {studentReports.length === 0 && (
-              <Box sx={{ py: 6, textAlign: 'center' }}>
+              <Box sx={{ py: 10, textAlign: 'center' }}>
                 <Typography color="text.secondary">No reports submitted by this student yet.</Typography>
               </Box>
             )}
           </Box>
         </DialogContent>
         <DialogActions sx={{ p: 3 }}>
-          <Button onClick={() => setOpenReports(false)}>Close</Button>
+          <Button onClick={() => setOpenReports(false)} variant="outlined">Close</Button>
         </DialogActions>
       </Dialog>
     </Container>

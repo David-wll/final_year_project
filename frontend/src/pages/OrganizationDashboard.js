@@ -3,9 +3,12 @@ import {
   Container, Typography, Box, Paper, Grid, TextField, Button,
   Alert, CircularProgress, Divider, IconButton,
   Dialog, DialogTitle, DialogContent, DialogActions, MenuItem, Chip,
-  Autocomplete
+  Autocomplete, Avatar, Tooltip, LinearProgress
 } from '@mui/material';
-import { Delete, Edit, Add, People, LocationOn, Verified, History } from '@mui/icons-material';
+import { 
+  Delete, Edit, Add, People, LocationOn, Verified, History, 
+  AutoAwesome, CheckCircle, Cancel, Email, WhatsApp 
+} from '@mui/icons-material';
 import api from '../services/api';
 
 const OrganizationDashboard = () => {
@@ -18,7 +21,9 @@ const OrganizationDashboard = () => {
   const [success, setSuccess] = useState('');
   const [openDialog, setOpenDialog] = useState(false);
   const [openApplicants, setOpenApplicants] = useState(false);
-  const [selectedOppApplicants, setSelectedOppApplicants] = useState([]);
+  const [selectedOpp, setSelectedOpp] = useState(null);
+  const [rankedApplicants, setRankedApplicants] = useState([]);
+  const [rankingLoading, setRankingLoading] = useState(false);
   const [taxonomy, setTaxonomy] = useState({ technical_skills: [], sectors: [], locations: [] });
 
   const [oppFormData, setOppFormData] = useState({
@@ -43,22 +48,36 @@ const OrganizationDashboard = () => {
 
   const fetchData = async () => {
     try {
-      const [profileRes, oppsRes, appsRes, taxRes, activityRes] = await Promise.all([
+      const [profileRes, oppsRes, taxRes, activityRes, appsRes] = await Promise.all([
         api.get('organizations/profile/'),
         api.get('organizations/opportunities/'),
-        api.get('placements/organization/applications/'),
         api.get('students/taxonomy/'),
-        api.get('placements/activity/')
+        api.get('placements/activity/'),
+        api.get('placements/organization/applications/')
       ]);
       setProfile(profileRes.data);
       setOpportunities(oppsRes.data);
-      setApplications(appsRes.data);
       setTaxonomy(taxRes.data);
       setActivities(activityRes.data);
+      setApplications(appsRes.data);
     } catch (err) {
       setError('Failed to load dashboard data');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleViewApplicants = async (opp) => {
+    setSelectedOpp(opp);
+    setOpenApplicants(true);
+    setRankingLoading(true);
+    try {
+      const res = await api.get(`organizations/opportunities/${opp.id}/ranked-applicants/`);
+      setRankedApplicants(res.data);
+    } catch (err) {
+      setError('Failed to fetch ranked applicants');
+    } finally {
+      setRankingLoading(false);
     }
   };
 
@@ -91,20 +110,15 @@ const OrganizationDashboard = () => {
     }
   };
 
-  const handleViewApplicants = (oppId) => {
-    const oppApps = applications.filter(app => app.opportunity === oppId);
-    setSelectedOppApplicants(oppApps);
-    setOpenApplicants(true);
-  };
-
   const handleStatusUpdate = async (appId, newStatus) => {
     try {
       await api.patch(`placements/applications/${appId}/status/`, { status: newStatus });
-      setSuccess('Status updated successfully!');
-      fetchData();
-      setSelectedOppApplicants(prev => prev.map(app =>
-        app.id === appId ? { ...app, status: newStatus } : app
+      setSuccess(`Application ${newStatus} successfully!`);
+      // Update local state for the ranked list
+      setRankedApplicants(prev => prev.map(app => 
+        app.application_id === appId ? { ...app, status: newStatus } : app
       ));
+      fetchData(); // Refresh overview counts
     } catch (err) {
       setError('Failed to update status');
     }
@@ -243,54 +257,142 @@ const OrganizationDashboard = () => {
         </Grid>
       </Grid>
 
-      {/* Modern Applicant Management Dialog */}
+      {/* Enhanced AI-Ranked Applicant Management Dialog */}
       <Dialog
         open={openApplicants}
         onClose={() => setOpenApplicants(false)}
         maxWidth="md"
         fullWidth
-        PaperProps={{ sx: { borderRadius: 4 } }}
+        PaperProps={{ sx: { borderRadius: 4, minHeight: 600 } }}
       >
-        <DialogTitle sx={{ fontWeight: 700 }}>Candidate Review</DialogTitle>
-        <DialogContent dividers sx={{ backgroundColor: 'rgba(17, 24, 39, 0.01)' }}>
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, py: 1 }}>
-            {selectedOppApplicants.map((app) => (
-              <Paper key={app.id} sx={{ p: 3, borderRadius: 3 }}>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
-                  <Box>
-                    <Typography variant="h6" sx={{ fontWeight: 700 }}>{app.student_details?.full_name}</Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      CGPA: {app.student_details?.cgpa} · Level: {app.student_details?.level}
-                    </Typography>
+        <DialogTitle sx={{ fontWeight: 800, display: 'flex', alignItems: 'center', gap: 1.5, py: 3 }}>
+          <AutoAwesome color="primary" /> AI-Ranked Applicants: {selectedOpp?.title}
+        </DialogTitle>
+        <DialogContent dividers sx={{ backgroundColor: 'rgba(17, 24, 39, 0.01)', p: 0 }}>
+          {rankingLoading ? (
+            <Box sx={{ py: 10, textAlign: 'center' }}>
+              <CircularProgress size={32} thickness={5} sx={{ mb: 2 }} />
+              <Typography variant="body2" color="text.secondary">Our AI is ranking candidates based on skills and background...</Typography>
+            </Box>
+          ) : (
+            <Box sx={{ p: 3, display: 'flex', flexDirection: 'column', gap: 3 }}>
+              {rankedApplicants.map((app, index) => (
+                <Paper key={app.application_id} sx={{ p: 4, borderRadius: 3, border: index === 0 ? '2px solid' : '1px solid', borderColor: index === 0 ? 'primary.main' : 'rgba(0,0,0,0.05)', position: 'relative' }}>
+                  {index === 0 && (
+                    <Chip 
+                      label="BEST MATCH" 
+                      color="primary" 
+                      size="small" 
+                      sx={{ position: 'absolute', top: -12, right: 20, fontWeight: 800, height: 24 }} 
+                    />
+                  )}
+                  
+                  <Grid container spacing={3}>
+                    <Grid item xs={12} sm={8}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
+                        <Avatar sx={{ width: 48, height: 48, bgcolor: 'primary.main', fontWeight: 700 }}>
+                          {app.student.full_name[0]}
+                        </Avatar>
+                        <Box>
+                          <Typography variant="h6" fontWeight={800}>{app.student.full_name}</Typography>
+                          <Typography variant="body2" color="text.secondary">
+                            {app.student.course_of_study} • Level {app.student.level} • {app.student.department}
+                          </Typography>
+                        </Box>
+                      </Box>
+                      
+                      <Box sx={{ mb: 2 }}>
+                        <Typography variant="caption" fontWeight={800} color="primary" sx={{ textTransform: 'uppercase', display: 'block', mb: 1 }}>
+                          Matching Skills
+                        </Typography>
+                        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                          {app.matched_skills.map(s => <Chip key={s} label={s} size="small" color="success" variant="outlined" sx={{ fontWeight: 600 }} />)}
+                          {app.matched_skills.length === 0 && <Typography variant="caption" color="text.secondary">No direct skill matches</Typography>}
+                        </Box>
+                      </Box>
+
+                      {app.missing_skills.length > 0 && (
+                        <Box sx={{ mb: 3 }}>
+                          <Typography variant="caption" fontWeight={800} color="text.secondary" sx={{ textTransform: 'uppercase', display: 'block', mb: 1 }}>
+                            Missing Skills
+                          </Typography>
+                          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                            {app.missing_skills.map(s => <Chip key={s} label={s} size="small" variant="outlined" sx={{ fontWeight: 600, opacity: 0.6 }} />)}
+                          </Box>
+                        </Box>
+                      )}
+                    </Grid>
+
+                    <Grid item xs={12} sm={4} sx={{ textAlign: { sm: 'right' }, borderLeft: { sm: '1px solid rgba(0,0,0,0.05)' } }}>
+                      <Box sx={{ mb: 3 }}>
+                        <Typography variant="caption" fontWeight={800} color="text.secondary" sx={{ textTransform: 'uppercase' }}>
+                          Match Score
+                        </Typography>
+                        <Typography variant="h3" fontWeight={800} color="primary.main">
+                          {app.match_score}%
+                        </Typography>
+                        <LinearProgress 
+                          variant="determinate" 
+                          value={app.match_score} 
+                          sx={{ height: 6, borderRadius: 3, mt: 1, bgcolor: 'rgba(0,0,0,0.05)' }} 
+                        />
+                      </Box>
+                      
+                      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                        <Chip 
+                          label={app.status.toUpperCase()} 
+                          color={app.status === 'accepted' ? 'success' : app.status === 'rejected' ? 'error' : 'default'}
+                          sx={{ fontWeight: 800, mb: 2 }}
+                        />
+                        <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end' }}>
+                          <Tooltip title="Email Candidate">
+                            <IconButton size="small" sx={{ bgcolor: 'rgba(0,0,0,0.03)' }}><Email sx={{ fontSize: 18 }} /></IconButton>
+                          </Tooltip>
+                          <Tooltip title="WhatsApp Candidate">
+                            <IconButton size="small" sx={{ bgcolor: 'rgba(0,0,0,0.03)' }}><WhatsApp sx={{ fontSize: 18 }} /></IconButton>
+                          </Tooltip>
+                        </Box>
+                      </Box>
+                    </Grid>
+                  </Grid>
+
+                  <Divider sx={{ my: 3 }} />
+
+                  <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap' }}>
+                    <Button 
+                      size="small" variant="outlined" startIcon={<CheckCircle />} color="success"
+                      disabled={app.status === 'accepted'}
+                      onClick={() => handleStatusUpdate(app.application_id, 'accepted')}
+                    >
+                      Hire Student
+                    </Button>
+                    <Button 
+                      size="small" variant="outlined" startIcon={<History />}
+                      onClick={() => handleStatusUpdate(app.application_id, 'interviewing')}
+                    >
+                      Schedule Interview
+                    </Button>
+                    <Box sx={{ flexGrow: 1 }} />
+                    <Button 
+                      size="small" variant="text" startIcon={<Cancel />} color="error"
+                      disabled={app.status === 'rejected'}
+                      onClick={() => handleStatusUpdate(app.application_id, 'rejected')}
+                    >
+                      Reject
+                    </Button>
                   </Box>
-                  <Chip
-                    label={app.status.toUpperCase()}
-                    size="small"
-                    sx={{ fontWeight: 700, fontSize: '0.65rem' }}
-                    color={app.status === 'accepted' ? 'success' : app.status === 'rejected' ? 'error' : 'default'}
-                  />
+                </Paper>
+              ))}
+              {rankedApplicants.length === 0 && (
+                <Box sx={{ py: 10, textAlign: 'center' }}>
+                  <Typography color="text.secondary">No applications received yet.</Typography>
                 </Box>
-                <Typography variant="body2" sx={{ mb: 3, p: 2, backgroundColor: 'background.default', borderRadius: 2, fontStyle: 'italic' }}>
-                  "{app.cover_letter}"
-                </Typography>
-                <Box sx={{ display: 'flex', gap: 1 }}>
-                  <Button size="small" variant="outlined" onClick={() => handleStatusUpdate(app.id, 'reviewing')}>Mark Reviewing</Button>
-                  <Button size="small" variant="outlined" onClick={() => handleStatusUpdate(app.id, 'interviewing')}>Invite Interview</Button>
-                  <Box sx={{ flexGrow: 1 }} />
-                  <Button size="small" variant="contained" color="success" onClick={() => handleStatusUpdate(app.id, 'accepted')}>Accept</Button>
-                  <Button size="small" variant="text" color="error" onClick={() => handleStatusUpdate(app.id, 'rejected')}>Reject</Button>
-                </Box>
-              </Paper>
-            ))}
-            {selectedOppApplicants.length === 0 && (
-              <Box sx={{ py: 6, textAlign: 'center' }}>
-                <Typography color="text.secondary">No applications received for this posting yet.</Typography>
-              </Box>
-            )}
-          </Box>
+              )}
+            </Box>
+          )}
         </DialogContent>
         <DialogActions sx={{ p: 3 }}>
-          <Button onClick={() => setOpenApplicants(false)}>Close</Button>
+          <Button onClick={() => setOpenApplicants(false)} variant="outlined" sx={{ borderRadius: 2 }}>Close</Button>
         </DialogActions>
       </Dialog>
 

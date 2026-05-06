@@ -102,9 +102,7 @@ const StudentProfilePage = () => {
     uploadData.append('resume', resumeFile);
 
     try {
-      const response = await api.patch('students/profile/', uploadData, {
-        headers: { 'Content-Type': 'multipart/form-data' }
-      });
+      const response = await api.patch('students/profile/', uploadData);
       setFormData(prev => ({ ...prev, ...response.data }));
       setSuccess('Resume uploaded and parsed! We\'ve pre-filled some details for you.');
       setActiveStep(1); // Move to Identity step

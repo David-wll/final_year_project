@@ -6,12 +6,14 @@ from .views import (
     CoordinatorOrganizationListView,
     CoordinatorApproveOrganizationView,
     ScrapeInternshipsView,
+    OpportunityRankedApplicantsView,
 )
 
 urlpatterns = [
     path('profile/', OrganizationProfileDetailView.as_view(), name='org_profile'),
     path('opportunities/', InternshipOpportunityListCreateView.as_view(), name='opportunity_list'),
     path('opportunities/<int:pk>/', InternshipOpportunityDetailView.as_view(), name='opportunity_detail'),
+    path('opportunities/<int:pk>/ranked-applicants/', OpportunityRankedApplicantsView.as_view(), name='ranked_applicants'),
     
     # Coordinator endpoints
     path('coordinator/pending-orgs/', CoordinatorOrganizationListView.as_view(), name='pending_orgs'),

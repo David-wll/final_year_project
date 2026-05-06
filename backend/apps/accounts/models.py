@@ -46,3 +46,35 @@ class User(AbstractBaseUser, PermissionsMixin):
 
     def __str__(self):
         return self.email
+
+class Profile(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='profile')
+    phone_number = models.CharField(max_length=15, blank=True)
+    bio = models.TextField(max_length=500, blank=True)
+    location = models.CharField(max_length=100, blank=True)
+    birth_date = models.DateField(null=True, blank=True)
+    profile_picture = models.ImageField(upload_to='profiles/', null=True, blank=True)
+
+    def __str__(self):
+        return self.user.username
+
+class Notification(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='notifications')
+    title = models.CharField(max_length=255)
+    message = models.TextField()
+    notification_type = models.CharField(max_length=50, default='info') # info, success, warning, error
+    is_read = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        ordering = ['-created_at']
+
+    @classmethod
+    def create_notification(cls, user, title, message, notification_type='info'):
+        return cls.objects.create(
+            user=user,
+            title=title,
+            message=message,
+            notification_type=notification_type
+        )
+

@@ -1,13 +1,47 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link as RouterLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { AppBar, Toolbar, Typography, Button, Box, Container, Avatar, Menu, MenuItem, IconButton } from '@mui/material';
-import { KeyboardArrowDown } from '@mui/icons-material';
+import { 
+  AppBar, Toolbar, Typography, Button, Box, Container, 
+  Avatar, Menu, MenuItem, IconButton, Badge, Popover,
+  List, ListItem, ListItemText, Divider, CircularProgress
+} from '@mui/material';
+import { KeyboardArrowDown, NotificationsNone, NotificationsActive } from '@mui/icons-material';
+import api from '../services/api';
 
 const Navbar = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
-  const [anchorEl, setAnchorEl] = React.useState(null);
+  const [anchorEl, setAnchorEl] = useState(null);
+  const [notifAnchor, setNotifAnchor] = useState(null);
+  const [notifications, setNotifications] = useState([]);
+  const [loadingNotifs, setLoadingNotifs] = useState(false);
+
+  useEffect(() => {
+    if (user) {
+      fetchNotifications();
+    }
+  }, [user]);
+
+  const fetchNotifications = async () => {
+    try {
+      const res = await api.get('auth/notifications/');
+      setNotifications(res.data);
+    } catch (err) {
+      console.error('Failed to fetch notifications');
+    }
+  };
+
+  const handleMarkRead = async (id) => {
+    try {
+      await api.post(`auth/notifications/${id}/read/`);
+      setNotifications(prev => prev.map(n => n.id === id ? { ...n, is_read: true } : n));
+    } catch (err) {
+      console.error('Failed to mark read');
+    }
+  };
+
+  const unreadCount = notifications.filter(n => !n.is_read).length;
 
   const handleMenu = (event) => {
     setAnchorEl(event.currentTarget);
@@ -73,7 +107,16 @@ const Navbar = () => {
                   )}
                 </Box>
 
-                <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <IconButton 
+                    onClick={(e) => setNotifAnchor(e.currentTarget)}
+                    sx={{ color: 'text.secondary' }}
+                  >
+                    <Badge badgeContent={unreadCount} color="error">
+                      {unreadCount > 0 ? <NotificationsActive /> : <NotificationsNone />}
+                    </Badge>
+                  </IconButton>
+
                   <IconButton
                     onClick={handleMenu}
                     sx={{ p: 0.5, borderRadius: 2, '&:hover': { backgroundColor: 'background.default' } }}
@@ -137,6 +180,48 @@ const Navbar = () => {
           </Box>
         </Toolbar>
       </Container>
+
+      {/* Notifications Popover */}
+      <Popover
+        open={Boolean(notifAnchor)}
+        anchorEl={notifAnchor}
+        onClose={() => setNotifAnchor(null)}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+        transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+        PaperProps={{ sx: { width: 320, maxHeight: 400, borderRadius: 3, mt: 1 } }}
+      >
+        <Box sx={{ p: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Typography variant="subtitle2" fontWeight={800}>Notifications</Typography>
+          {unreadCount > 0 && <Typography variant="caption" color="primary" sx={{ cursor: 'pointer' }}>Mark all as read</Typography>}
+        </Box>
+        <Divider />
+        <List sx={{ p: 0 }}>
+          {notifications.length > 0 ? (
+            notifications.map((n) => (
+              <ListItem 
+                key={n.id} 
+                sx={{ 
+                  bgcolor: n.is_read ? 'transparent' : 'rgba(59, 130, 246, 0.04)',
+                  cursor: 'pointer',
+                  '&:hover': { bgcolor: 'rgba(0,0,0,0.02)' }
+                }}
+                onClick={() => handleMarkRead(n.id)}
+              >
+                <ListItemText
+                  primary={n.title}
+                  secondary={n.message}
+                  primaryTypographyProps={{ variant: 'body2', fontWeight: n.is_read ? 500 : 800 }}
+                  secondaryTypographyProps={{ variant: 'caption', sx: { display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' } }}
+                />
+              </ListItem>
+            ))
+          ) : (
+            <Box sx={{ p: 4, textAlign: 'center' }}>
+              <Typography variant="body2" color="text.secondary">No notifications yet.</Typography>
+            </Box>
+          )}
+        </List>
+      </Popover>
     </AppBar>
   );
 };

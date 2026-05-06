@@ -17,6 +17,7 @@ from organizations.models import InternshipOpportunity
 from organizations.serializers import InternshipOpportunitySerializer
 from django.contrib.auth import get_user_model
 from .services import log_activity
+from accounts.models import Notification
 
 class StudentApplicationListCreateView(generics.ListCreateAPIView):
     serializer_class = ApplicationSerializer
@@ -80,6 +81,14 @@ class ApplicationStatusUpdateView(generics.UpdateAPIView):
                     start_date=date.today() + timedelta(days=7),  # Default start in a week
                     end_date=date.today() + timedelta(days=90),  # Default 3 months
                 )
+                
+                # Notify Student
+                Notification.create_notification(
+                    user=application.student.user,
+                    title="Congratulations! Application Accepted",
+                    message=f"Your application for {opp.title} at {opp.organization_name} has been accepted.",
+                    notification_type='success'
+                )
                 log_activity(
                     activity_type='placement_created',
                     title=f'Placement created for {application.student.full_name}',
@@ -99,6 +108,14 @@ class ApplicationStatusUpdateView(generics.UpdateAPIView):
             else:
                 application.status = new_status
                 application.save(update_fields=['status', 'updated_at'])
+
+                # Notify Student
+                Notification.create_notification(
+                    user=application.student.user,
+                    title="Application Status Updated",
+                    message=f"Your application for {application.opportunity.title} is now {new_status}.",
+                    notification_type='info' if new_status != 'rejected' else 'error'
+                )
                 log_activity(
                     activity_type='application_status',
                     title=f'Application {new_status} for {application.student.full_name}',

@@ -55,6 +55,74 @@ class CoordinatorApproveOrganizationView(generics.UpdateAPIView):
         return Response(self.get_serializer(org).data)
 
 
+import ml.predict as ml_predict
+from placements.models import Application
+from students.serializers import StudentProfileSerializer
+
+class OpportunityRankedApplicantsView(APIView):
+    permission_classes = [permissions.IsAuthenticated, IsOrganization]
+
+    def get(self, request, pk):
+        try:
+            opportunity = InternshipOpportunity.objects.get(pk=pk, organization__user=request.user)
+        except InternshipOpportunity.DoesNotExist:
+            return Response({"error": "Opportunity not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        applications = Application.objects.filter(opportunity=opportunity)
+        
+        ranked_results = []
+        for app in applications:
+            student = app.student
+            
+            student_data = {
+                "cgpa": student.cgpa,
+                "level": student.level,
+                "technical_skills": [
+                    s["name"] if isinstance(s, dict) else s
+                    for s in (student.technical_skills or [])
+                ],
+                "preferred_sectors": student.preferred_sectors or [],
+                "preferred_locations": student.preferred_locations or [],
+            }
+
+            opp_data = {
+                "sector": opportunity.sector,
+                "required_technical_skills": [
+                    s["name"] if isinstance(s, dict) else s
+                    for s in (opportunity.required_technical_skills or [])
+                ],
+                "location_state": opportunity.location_state,
+            }
+
+            # Get base ML score
+            ml_score = ml_predict.get_recommendation_score(student_data, opp_data)
+
+            # Heuristic adjustments
+            student_skills = set(student_data["technical_skills"])
+            required_skills = set(opp_data["required_technical_skills"])
+            matched_skills = student_skills & required_skills
+            
+            skill_match_ratio = (
+                len(matched_skills) / len(required_skills) if required_skills else 1.0
+            )
+
+            final_score = int((ml_score * 0.7 + skill_match_ratio * 0.3) * 100)
+
+            ranked_results.append({
+                "application_id": app.id,
+                "student": StudentProfileSerializer(student).data,
+                "match_score": final_score,
+                "status": app.status,
+                "matched_skills": list(matched_skills),
+                "missing_skills": list(required_skills - student_skills)
+            })
+
+        # Sort by score descending
+        ranked_results.sort(key=lambda x: x['match_score'], reverse=True)
+
+        return Response(ranked_results)
+
+
 class ScrapeInternshipsView(APIView):
     """Coordinator-only endpoint to trigger the real-data scraper."""
     permission_classes = [permissions.IsAuthenticated, IsCoordinator]

@@ -7,6 +7,7 @@ from placements.models import Placement
 from placements.serializers import PlacementSerializer
 from accounts.permissions import IsStudent, IsSupervisor, IsCoordinator
 from django.db.models import Avg, Count
+from accounts.models import Notification
 
 class ProgressReportListCreateView(generics.ListCreateAPIView):
     serializer_class = ProgressReportSerializer
@@ -29,11 +30,20 @@ class ProgressReportListCreateView(generics.ListCreateAPIView):
         # Automatically find the active placement for the student
         try:
             placement = Placement.objects.get(application__student__user=self.request.user, is_active=True)
-            serializer.save(placement=placement)
+            report = serializer.save(placement=placement)
+
+            # Notify Supervisor
+            if placement.supervisor_assigned:
+                Notification.create_notification(
+                    user=placement.supervisor_assigned,
+                    title="New Weekly Report",
+                    message=f"{self.request.user.email} submitted a report for Week {report.week_number}.",
+                    notification_type='info'
+                )
         except Placement.DoesNotExist:
             raise serializers.ValidationError("You do not have an active placement to submit reports for.")
 
-class ProgressReportMarkSeenView(generics.UpdateAPIView):
+class ProgressReportActionView(generics.UpdateAPIView):
     queryset = ProgressReport.objects.all()
     serializer_class = ProgressReportSerializer
     permission_classes = [permissions.IsAuthenticated, IsSupervisor]
@@ -43,9 +53,25 @@ class ProgressReportMarkSeenView(generics.UpdateAPIView):
         if report.placement.supervisor_assigned != request.user:
             return Response({"error": "Unauthorized"}, status=status.HTTP_403_FORBIDDEN)
         
-        report.supervisor_seen = True
-        report.save()
-        return Response(self.get_serializer(report).data)
+        status_val = request.data.get('status')
+        comment = request.data.get('supervisor_comment', '')
+        
+        if status_val in ['approved', 'revision_requested']:
+            report.status = status_val
+            report.supervisor_comment = comment
+            report.supervisor_seen = True
+            report.save()
+
+            # Notify Student
+            Notification.create_notification(
+                user=report.placement.student.user,
+                title=f"Logbook {status_val.replace('_', ' ').title()}",
+                message=f"Your supervisor has {status_val.replace('_', ' ')} your Week {report.week_number} report.",
+                notification_type='success' if status_val == 'approved' else 'warning'
+            )
+            return Response(self.get_serializer(report).data)
+        
+        return Response({"error": "Invalid status"}, status=status.HTTP_400_BAD_REQUEST)
 
 class EvaluationListCreateView(generics.ListCreateAPIView):
     serializer_class = EvaluationSerializer

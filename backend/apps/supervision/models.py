@@ -5,11 +5,26 @@ from placements.models import Placement
 class ProgressReport(models.Model):
     placement = models.ForeignKey(Placement, on_delete=models.CASCADE, related_name='reports')
     week_number = models.IntegerField()
-    tasks_completed = models.TextField()
-    skills_developed = models.TextField()
-    challenges = models.TextField()
+    
+    # Daily logs stored as JSON
+    # Structure: [{"day": "Monday", "activity": "...", "photo": "..."}, ...]
+    daily_logs = models.JSONField(default=list)
+    
+    weekly_summary = models.TextField(blank=True)
+    skills_developed = models.TextField(blank=True)
+    challenges = models.TextField(blank=True)
+    
+    # Proof of work (optional main photo)
+    proof_image = models.ImageField(upload_to='reports/', null=True, blank=True)
+    
     submitted_at = models.DateTimeField(auto_now_add=True)
     supervisor_seen = models.BooleanField(default=False)
+    supervisor_comment = models.TextField(blank=True)
+    status = models.CharField(
+        max_length=20, 
+        choices=(('pending', 'Pending'), ('approved', 'Approved'), ('revision_requested', 'Revision Requested')),
+        default='pending'
+    )
 
     class Meta:
         ordering = ['-week_number']
